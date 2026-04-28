@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Pengambilan Paspor Kanim Ternate - Inggri Anggraini</title>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        :root { --primary: #003366; --accent: #0284c7; --bg: #f8fafc; --success: #22c55e; --danger: #ef4444; }
+        body { font-family: 'Inter', sans-serif; margin: 0; background: var(--bg); display: flex; height: 100vh; overflow: hidden; }
+
+        /* --- LOGIN OVERLAY --- */
+        #loginOverlay { position: fixed; inset: 0; background: #e2e8f0; z-index: 10000; display: flex; align-items: center; justify-content: center; }
+        .login-card { background: white; border-radius: 12px; width: 500px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
+        .login-header { background: #003366; color: white; padding: 25px; display: flex; align-items: center; border-bottom: 4px solid #f59e0b; }
+        .login-header .logos { display: flex; gap: 10px; margin-right: 20px; }
+        .login-header img { height: 50px; width: auto; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2)); }
+        .header-text h1 { font-size: 15px; margin: 0; letter-spacing: 0.5px; text-transform: uppercase; }
+        .header-text p { font-size: 11px; margin: 5px 0 0 0; color: #cbd5e1; font-weight: 300; }
+
+        .login-body { padding: 40px; }
+        .login-body h2 { text-align: center; font-size: 20px; color: #1e293b; margin-bottom: 10px; }
+        .login-body p.sub { text-align: center; color: #64748b; font-size: 13px; margin-bottom: 30px; }
+
+        input { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; box-sizing: border-box; margin-bottom: 15px; outline: none; }
+        input:focus { border-color: var(--accent); ring: 2px solid var(--accent); }
+        .btn-submit { width: 100%; padding: 15px; background: #003366; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px; transition: 0.3s; }
+        .btn-submit:hover { background: #002244; }
+
+        /* --- SIDEBAR --- */
+        .sidebar { width: 300px; background: #0f172a; color: white; display: flex; flex-direction: column; }
+        .sidebar-header { padding: 30px 20px; text-align: center; border-bottom: 1px solid #1e293b; }
+        .sidebar-header img { width: 50px; margin-bottom: 15px; padding: 5px; border-radius: 10px; }
+        .sidebar-header h2 { font-size: 14px; margin: 0; line-height: 1.5; color: #f1f5f9; text-transform: uppercase; }
+        .nav-menu { flex-grow: 1; padding: 20px 0; }
+        .nav-item { padding: 15px 25px; display: flex; align-items: center; cursor: pointer; color: #94a3b8; transition: 0.3s; font-size: 14px; }
+        .nav-item i { margin-right: 15px; width: 20px; text-align: center; }
+        .nav-item:hover, .nav-item.active { background: var(--accent); color: white; }
+        .sidebar-footer { padding: 20px; border-top: 1px solid #1e293b; font-size: 11px; text-align: center; }
+
+        /* --- CONTENT AREA --- */
+        .main-content { flex-grow: 1; overflow-y: auto; padding: 40px; }
+        .page { display: none; animation: fadeIn 0.4s ease; }
+        .page.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 30px; border: 1px solid #e2e8f0; }
+        .grid-forms { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 20px; }
+        label { font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 8px; display: block; text-transform: uppercase; }
+        
+        .media-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-top: 25px; }
+        .cam-wrap { position: relative; height: 260px; background: #000; border-radius: 12px; overflow: hidden; border: 3px solid #e2e8f0; }
+        video, .snapshot-img { width: 100%; height: 100%; object-fit: cover; }
+        .btn-cam { position: absolute; bottom: 15px; right: 15px; background: rgba(0,0,0,0.5); color: white; border: none; padding: 10px; border-radius: 50%; cursor: pointer; }
+        .sig-wrap { border: 2px solid #cbd5e1; border-radius: 12px; height: 260px; background: #fff; }
+        canvas { width: 100%; height: 100%; }
+
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f8fafc; padding: 15px; text-align: left; font-size: 12px; color: #64748b; border-bottom: 2px solid #e2e8f0; }
+        td { padding: 15px; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
+        .img-icon { width: 35px; height: 20px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd; }
+
+        .admin-only, .logout-trigger { display: none; }
+        .whatsapp-btn { color: #16a34a; text-decoration: none; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div id="loginOverlay">
+    <div class="login-card">
+        <div class="login-header">
+            <div class="logos">
+                <img src="gambar1.png">
+                <img src="gambar2.png">
+            </div>
+            <div class="header-text">
+                <h1>KANTOR IMIGRASI KELAS I TPI TERNATE</h1>
+                <p>Jl. SKSD Palapa No. 388, Kota Ternate, Maluku Utara</p>
+            </div>
+        </div>
+        <div class="login-body">
+            <h2>APLIKASI PENGAMBILAN PASPOR<br>KANIM TERNATE</h2>
+            <p class="sub">Silakan masuk untuk mengakses sistem</p>
+            <input type="text" id="userInput" placeholder="Username">
+            <input type="password" id="passInput" placeholder="Password">
+            <button class="btn-submit" onclick="loginProcess()">LOGIN</button>
+            <p style="text-align: center; font-size: 11px; color: #94a3b8; margin-top: 20px;">Aplikasi by Inggri Anggraini<br>KANTOR IMIGRASI KELAS I TPI TERNATE</p>
+        </div>
+    </div>
+</div>
+
+<div class="sidebar">
+    <div class="sidebar-header">
+        <img src="gambar1.png">
+        <h2>APLIKASI PENGAMBILAN PASPOR<br>KANIM TERNATE</h2>
+    </div>
+    <div class="nav-menu">
+        <div class="nav-item active" onclick="nav('dash', this)"><i class="fas fa-th-large"></i> Beranda</div>
+        <div class="nav-item" onclick="nav('inputPage', this)"><i class="fas fa-file-signature"></i> Input Penyerahan</div>
+        <div class="nav-item admin-only" id="stokMenu" onclick="nav('stokPage', this)"><i class="fas fa-boxes"></i> Paspor > 30 Hari</div>
+        <div class="nav-item" onclick="nav('donePage', this)"><i class="fas fa-clipboard-check"></i> Selesai Penyerahan</div>
+        <div class="nav-item admin-only" id="adminMenu" onclick="nav('reportPage', this)"><i class="fas fa-file-export"></i> Riwayat & Export</div>
+    </div>
+    <div class="sidebar-footer">
+        <div id="statusUser" style="color:var(--success); font-weight:bold; margin-bottom:10px;"></div>
+        <div class="logout-trigger" onclick="logoutProcess()" style="cursor:pointer; color:var(--danger); font-weight:bold;"><i class="fas fa-power-off"></i> Logout</div>
+        <p style="color: #64748b; margin-top: 15px;">Dibuat Oleh: Inggri Anggraini</p>
+    </div>
+</div>
+
+<div class="main-content">
+    <div id="dash" class="page active">
+        <h1>Dashboard Utama</h1>
+        <div class="grid-forms">
+            <div class="card" style="border-left: 5px solid var(--accent)"><h3>Total Penyerahan</h3><h2 id="st_done">0</h2></div>
+            <div class="card" style="border-left: 5px solid var(--danger)"><h3>Stok > 30 Hari</h3><h2 id="st_old">0</h2></div>
+        </div>
+        <div class="card">
+            <h3>SELAMAT DATANG DI APLIKASI PENGAMBILAN PASPOR</h3>
+            <p style="color: #64748b; margin-top: 15px;">Copyright @2026</p>
+        </div>
+    </div>
+
+    <div id="inputPage" class="page">
+        <h1>Form Pengambilan Paspor</h1>
+        <div class="card">
+            <form id="formInput">
+                <div class="grid-forms">
+                    <div><label>Nomor Paspor</label><input type="text" id="pNo" required></div>
+                    <div><label>Nama Pemohon</label><input type="text" id="pNama" required></div>
+                    <div><label>Nama Pengambil</label><input type="text" id="pAmbil" placeholder="Kosongkan jika ambil sendiri"></div>
+                </div>
+                <div class="grid-forms">
+                    <div><label>Jenis Paspor</label>
+                        <select id="pJenis" onchange="autoDate()" style="width:100%; padding:12px; border-radius:8px; border:1px solid #cbd5e1;">
+                            <option value="10">Paspor Elektronik 10 Tahun</option>
+                            <option value="5">Paspor Elektronik 5 Tahun</option>
+                        </select>
+                    </div>
+                    <div><label>Tanggal Terbit</label><input type="date" id="pTgl" required onchange="autoDate()"></div>
+                    <div><label>Habis Berlaku</label><input type="text" id="pExp" readonly style="background:#f1f5f9"></div>
+                </div>
+
+                <div class="media-grid">
+                    <div>
+                        <label>Foto Penerima (Kamera)</label>
+                        <div class="cam-wrap">
+                            <video id="video" autoplay playsinline></video>
+                            <img id="faceSnap" class="snapshot-img" style="display:none; position:absolute; inset:0; z-index:5;">
+                            <button type="button" class="btn-cam" onclick="toggleCam()"><i class="fas fa-sync"></i></button>
+                        </div>
+                        <button type="button" class="btn-submit" style="margin-top:10px; background:#64748b" onclick="snapFace()">AMBIL FOTO WAJAH</button>
+                    </div>
+                    <div>
+                        <label>Tanda Tangan Penerima</label>
+                        <div class="sig-wrap"><canvas id="canvasSig"></canvas></div>
+                        <button type="button" class="btn-submit" style="margin-top:10px; background:#64748b" onclick="sigPad.clear()">HAPUS TANDA TANGAN</button>
+                    </div>
+                </div>
+                <button type="submit" class="btn-submit" style="margin-top:30px; height:60px; font-size:18px;">SIMPAN PENYERAHAN</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="stokPage" class="page">
+        <h1>Pendataan Paspor > 30 Hari</h1>
+        <div class="card">
+            <h4>Input Data Stok Lama</h4>
+            <div class="grid-forms" style="align-items:end">
+                <div><label>Nama Pemohon</label><input type="text" id="sNama"></div>
+                <div><label>Tanggal Terbit</label><input type="date" id="sTgl"></div>
+                <div><label>Nomor Telepon (WhatsApp)</label><input type="text" id="sTelp" placeholder="628xxx"></div>
+                <button class="btn-submit" onclick="saveStok()">TAMBAH DATA</button>
+            </div>
+            <hr style="border:0; border-top:1px solid #e2e8f0; margin:30px 0">
+            <table>
+                <thead><tr><th>Nama Pemohon</th><th>Tgl Terbit</th><th>No. Telepon</th><th>Aksi</th></tr></thead>
+                <tbody id="stokTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="donePage" class="page">
+        <h1>Daftar Penyerahan Hari Ini</h1>
+        <div class="card">
+            <table>
+                <thead><tr><th>Foto</th><th>Pemohon</th><th>Pengambil</th><th>No. Paspor</th><th>TTD</th><th>Aksi</th></tr></thead>
+                <tbody id="doneTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="reportPage" class="page">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+            <h1>Laporan Lengkap & Export</h1>
+            <div>
+                <button onclick="exportExcel()" style="background:#16a34a; color:white; padding:12px 20px; border:none; border-radius:8px; cursor:pointer; font-weight:bold;"><i class="fas fa-file-excel"></i> EXCEL</button>
+                <button onclick="exportPdf()" style="background:#dc2626; color:white; padding:12px 20px; border:none; border-radius:8px; cursor:pointer; font-weight:bold; margin-left:10px;"><i class="fas fa-file-pdf"></i> PDF</button>
+            </div>
+        </div>
+        <div class="card" style="overflow-x:auto">
+            <table id="mainReportTable">
+                <thead>
+                    <tr><th>Tgl Penyerahan</th><th>No Paspor</th><th>Nama Pemohon</th><th>Pengambil</th><th>Jenis</th><th>Berlaku</th><th>TTD</th><th>Aksi</th></tr>
+                </thead>
+                <tbody id="reportTable"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    let dbP = JSON.parse(localStorage.getItem('db_penyerahan')) || [];
+    let dbS = JSON.parse(localStorage.getItem('db_stok')) || [];
+    let stream, sigPad, isFront = true;
+
+    function loginProcess() {
+        const u = document.getElementById('userInput').value.toLowerCase();
+        const p = document.getElementById('passInput').value;
+        if((u === 'admin' && p === 'ternate123') || (u === 'petugas' && p === 'ternate456')) {
+            sessionStorage.setItem('inggri_role', u);
+            location.reload();
+        } else { alert("Akses Ditolak! User/Password salah."); }
+    }
+
+    function logoutProcess() { sessionStorage.clear(); location.reload(); }
+
+    function checkAccess() {
+        const role = sessionStorage.getItem('inggri_role');
+        if(!role) return;
+        document.getElementById('loginOverlay').style.display = 'none';
+        document.getElementById('statusUser').innerText = "USER: " + role.toUpperCase();
+        if(role === 'admin') {
+            document.querySelectorAll('.admin-only').forEach(e => e.style.display = 'flex');
+        } else {
+            document.querySelectorAll('.admin-only').forEach(e => e.style.display = 'none');
+        }
+        document.querySelector('.logout-trigger').style.display = 'flex';
+        renderData();
+    }
+
+    function nav(id, el) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        el.classList.add('active');
+        if(id === 'inputPage') { initCam(); initSig(); }
+    }
+
+    async function initCam() {
+        if(stream) stream.getTracks().forEach(t => t.stop());
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: isFront ? "user" : "environment" } });
+            document.getElementById('video').srcObject = stream;
+        } catch (err) { console.log("Kamera tidak dapat diakses."); }
+    }
+
+    function toggleCam() { isFront = !isFront; initCam(); }
+
+    function snapFace() {
+        const v = document.getElementById('video');
+        const c = document.createElement('canvas');
+        // Perkecil resolusi foto agar tidak membebani memori
+        c.width = 320; c.height = 240; 
+        c.getContext('2d').drawImage(v, 0, 0, 320, 240);
+        document.getElementById('faceSnap').src = c.toDataURL('image/jpeg', 0.7); // Kompresi JPEG 70%
+        document.getElementById('faceSnap').style.display = 'block';
+    }
+
+    function initSig() {
+        const canvas = document.getElementById('canvasSig');
+        sigPad = new SignaturePad(canvas);
+        canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight;
+    }
+
+    function autoDate() {
+        const t = document.getElementById('pTgl').value;
+        const j = document.getElementById('pJenis').value;
+        if(t) {
+            let d = new Date(t);
+            d.setFullYear(d.getFullYear() + parseInt(j));
+            document.getElementById('pExp').value = d.toISOString().split('T')[0];
+        }
+    }
+
+    // --- FIX PENYIMPANAN DATA ---
+    document.getElementById('formInput').onsubmit = function(e) {
+        e.preventDefault();
+        
+        const faceSrc = document.getElementById('faceSnap').src;
+        const isFaceEmpty = document.getElementById('faceSnap').style.display === 'none';
+        
+        if(isFaceEmpty || sigPad.isEmpty()) {
+            return alert("Foto Wajah dan Tanda Tangan Wajib diisi!");
+        }
+
+        try {
+            const newData = {
+                id: Date.now(),
+                tglSimpan: new Date().toLocaleDateString('id-ID'),
+                no: document.getElementById('pNo').value,
+                nama: document.getElementById('pNama').value,
+                ambil: document.getElementById('pAmbil').value || "Sendiri",
+                jenis: document.getElementById('pJenis').options[document.getElementById('pJenis').selectedIndex].text,
+                exp: document.getElementById('pExp').value,
+                foto: faceSrc, // Sudah terkompresi di snapFace
+                ttd: sigPad.toDataURL('image/png')
+            };
+
+            dbP.push(newData);
+            localStorage.setItem('db_penyerahan', JSON.stringify(dbP));
+            
+            alert("Data Berhasil Disimpan!");
+            
+            // Reset & Refresh
+            this.reset();
+            document.getElementById('faceSnap').style.display = 'none';
+            sigPad.clear();
+            renderData();
+            nav('dash', document.querySelector('.nav-item')); 
+        } catch (error) {
+            alert("Gagal menyimpan! Memori penuh, silakan hapus riwayat lama.");
+            console.error(error);
+        }
+    }
+
+    function saveStok() {
+        const n = document.getElementById('sNama').value;
+        const p = document.getElementById('sTelp').value;
+        const t = document.getElementById('sTgl').value;
+        if(!n || !p || !t) return alert("Mohon lengkapi data!");
+        dbS.push({ id: Date.now(), nama: n, tgl: t, telp: p });
+        localStorage.setItem('db_stok', JSON.stringify(dbS));
+        renderData();
+        document.getElementById('sNama').value = ''; document.getElementById('sTelp').value = ''; document.getElementById('sTgl').value = '';
+    }
+
+    function renderData() {
+        document.getElementById('st_done').innerText = dbP.length;
+        document.getElementById('st_old').innerText = dbS.length;
+
+        const stokB = document.getElementById('stokTable');
+        stokB.innerHTML = '';
+        dbS.forEach(s => {
+            stokB.innerHTML += `<tr><td>${s.nama.toUpperCase()}</td><td>${s.tgl}</td><td>${s.telp} <a href="https://wa.me/${s.telp}" target="_blank" class="whatsapp-btn"><i class="fab fa-whatsapp"></i></a></td><td><button onclick="delStok(${s.id})" style="color:red; border:none; background:none; cursor:pointer;"><i class="fas fa-trash"></i></button></td></tr>`;
+        });
+
+        const doneB = document.getElementById('doneTable');
+        const repB = document.getElementById('reportTable');
+        doneB.innerHTML = ''; repB.innerHTML = '';
+
+        dbP.forEach(d => {
+            const btnDel = `<td><button onclick="delPenyerahan(${d.id})" style="color:red; border:none; background:none; cursor:pointer;"><i class="fas fa-trash"></i></button></td>`;
+            doneB.innerHTML += `<tr><td><img src="${d.foto}" class="img-icon"></td><td>${d.nama.toUpperCase()}</td><td>${d.ambil.toUpperCase()}</td><td>${d.no}</td><td><img src="${d.ttd}" class="img-icon"></td>${btnDel}</tr>`;
+            repB.innerHTML += `<tr><td>${d.tglSimpan}</td><td>${d.no}</td><td>${d.nama}</td><td>${d.ambil}</td><td>${d.jenis}</td><td>${d.exp}</td><td><img src="${d.ttd}" class="img-icon"></td>${btnDel}</tr>`;
+        });
+    }
+
+    function delStok(id) { if(confirm("Hapus data?")) { dbS = dbS.filter(x => x.id !== id); localStorage.setItem('db_stok', JSON.stringify(dbS)); renderData(); } }
+    function delPenyerahan(id) { if(confirm("Hapus riwayat penyerahan ini?")) { dbP = dbP.filter(x => x.id !== id); localStorage.setItem('db_penyerahan', JSON.stringify(dbP)); renderData(); } }
+
+    function exportExcel() {
+        const ws = XLSX.utils.table_to_sheet(document.getElementById('mainReportTable'));
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Laporan");
+        XLSX.writeFile(wb, "Laporan_Kanim_Ternate.xlsx");
+    }
+
+    function exportPdf() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('l', 'mm', 'a4');
+        doc.text("Laporan Pengambilan Paspor Kanim Ternate", 14, 15);
+        doc.autoTable({ html: '#mainReportTable', startY: 25 });
+        doc.save("Laporan_Kanim_Ternate.pdf");
+    }
+
+    window.onload = checkAccess;
+</script>
+</body>
+</html>
